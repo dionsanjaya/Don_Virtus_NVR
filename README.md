@@ -58,7 +58,8 @@ AINVR/
 ## Prerequisites
 
 - **Hardware**
-  - Server: CPU 4 core, RAM 8GB (GPU disarankan untuk AI).
+  - Server: CPU 8 core, RAM 16GB (disarankan 32GB untuk lebih nyaman)
+  - Discrete GPU (NVidia) disarankan untuk AI (saya masih observasi lebih detail untuk spek GPU minimal). Integrated GPU hanya untuk menampilkan thumbnail video dan live streaming saja.
   - Kamera IP: Minimal 2 dengan RTSP support.
   - Penyimpanan: SSD untuk rekaman.
 
