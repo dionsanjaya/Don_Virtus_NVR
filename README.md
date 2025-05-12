@@ -16,8 +16,9 @@
   + Face recognition dan face search menggunakan `dlib`.
   + Object classification menggunakan ResNet.
   + People detection (prioritas deteksi "person").
-  + Dashboard dengan live view, playback, dan analisis AI.
+  + Dashboard dengan jumlah thumbnail kamera yang dapat dipilih dan analisis AI.
   + Pengaturan kamera, AI, rekaman, notifikasi, dan manajemen user.
+  + Rencana pengembangan: Integrasi FAISS untuk mempercepat face search, optimasi model AI (quantization/pruning), dan multi-modal AI (video + audio).
 
 ## Project Structure
 ```
@@ -140,7 +141,7 @@ AINVR/
    ```bash
    python init_db.py
    ```
-   > Membuat tabel `detections` (untuk hasil AI), `users` (untuk multi-user), dan `faces` (untuk face recognition).
+   > Membuat tabel `detections`, `users`, dan `faces`.
 
 ## Building the Project
 
@@ -195,8 +196,9 @@ AINVR/
 
 3. **Configure Dashboard Layout (Admin)**
    - Menu: `Settings > Dashboard`.
-   - Pilih layout (e.g., 4x2), assign kamera ke slot, aktifkan overlay AI.
-   - > Contoh: Set 4x2, slot 1-4 untuk `Cam1`, aktifkan overlay.
+   - Pilih jumlah thumbnail (e.g., 1, 4, 8) dan layout (e.g., 1x1, 2x2, 2x4).
+   - Assign kamera ke thumbnail secara dinamis.
+   - > Contoh: Pilih 4 thumbnail dengan layout 2x2, assign `Cam1` ke slot 1-2, `Cam2` ke slot 3-4.
 
 4. **Configure AI Settings (Admin)**
    - Menu: `Settings > AI`.
@@ -206,8 +208,10 @@ AINVR/
 
 5. **Run AI Analysis (Admin/Operator)**
    - Menu: `AI Analysis`.
-   - Input rentang waktu, kamera, dan jenis AI (e.g., Face Search, Object Detection).
-   - > Contoh: Cari wajah tertentu di `Cam1` dari 10:00:00-11:00:00, atau deteksi `Car` di periode yang sama.
+   - Pilih satu kamera untuk analisis (e.g., `Cam1`).
+   - Input rentang waktu dan jenis AI (e.g., Face Search, Object Detection).
+   - > Contoh: Analisis `Cam1` dari 2025-05-12 10:00:00-11:00:00 untuk deteksi `Car`.
+   - > Note: Saat ini hanya mendukung satu kamera. Pengembangan multi-kamera tersedia jika hardware (CPU/GPU/RAM) memadai.
 
 6. **Manage Recordings (Admin)**
    - Menu: `Settings > Recording`.
@@ -288,9 +292,33 @@ AINVR/
   - Pastikan sub-kelas (e.g., Car, Motorcycle) dipilih di `Settings > AI`.
   - > Update YOLOv8 weights di `models/yolo/` jika kelas tidak mendukung.
 
+- **AI Analysis Multi-Camera Error**
+  - Saat ini hanya satu kamera per analisis.
+  - > Pengembangan multi-kamera membutuhkan hardware lebih kuat (CPU/GPU/RAM).
+
 - **Database Error**
   - Pastikan `DATABASE_URL` di `config.py` sesuai (SQLite atau PostgreSQL).
   - > Untuk PostgreSQL, cek koneksi: `psql -h localhost -U ainvr_user -d ainvr`.
+
+## Comparison with Existing NVRs
+
+- **Open-Source NVRs**
+  + Frigate: Punya object detection dengan Coral TPU, tapi ga ada face recognition atau classification selengkap AINVR.
+  + ZoneMinder: Matang untuk NVR tradisional, tapi arsitekturnya jadul dan ga fleksibel untuk AI canggih.
+  + Shinobi: Ringan dan support banyak kamera, tapi AI-nya cuma motion detection.
+  + Viseron: Fokus AI (motion, face), tapi ga support multi-camera analysis atau dashboard dinamis.
+  + Moonfire NVR: Efisien untuk rekaman, tapi ga punya AI.
+  > Kelemahan: Ga ada yang kombinasikan AI lengkap (face, object, classification) dengan dashboard adjustable.
+
+- **Commercial NVRs**
+  + Dahua WizSense/WizMind: Facial recognition dan object detection, tapi mahal dan locked ke ekosistem.
+  + Hikvision DS Series: AI (motion, face), tapi software berat dan privacy concern.
+  + Synology Surveillance Station: Powerful dengan AI, tapi butuh NAS mahal.
+  + Swann NVR: Facial recognition, tapi terikat bundle kamera.
+  > Kelemahan: Harga tinggi, vendor lock-in, dan ga sefleksibel AINVR.
+
+- **AINVR Advantage**
+  > Kombinasi unik: AI canggih (face, object, classification) dengan dashboard thumbnail adjustable. Rencana FAISS dan optimasi bikin AINVR potensial unggul.
 
 ## Contributing
 
@@ -315,6 +343,7 @@ AINVR/
 - **Recordings**: Disimpan di `./recordings/camX/`.
 - **Models**: YOLOv8 di `models/yolo/`, ResNet di `models/resnet/`.
 - **Security**: Gunakan HTTPS dengan Nginx reverse proxy.
+- **Development Status**: Proyek masih dalam pengembangan. Fitur seperti FAISS dan multi-camera analysis direncanakan.
 
 ## License
 > TBD (Planned: MIT License)
