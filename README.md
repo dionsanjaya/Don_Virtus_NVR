@@ -46,6 +46,9 @@ AINVR/
 │   ├── test_app.py           # Unit test untuk Flask
 │   ├── test_ai.py            # Unit test untuk AI
 │   └── __init__.py
+├── docs/
+│   ├── tasks.md              # Daftar tugas pengembangan
+│   └── progress.md           # Laporan progress
 ├── README.md
 ├── requirements.txt
 └── Dockerfile
@@ -64,9 +67,17 @@ AINVR/
   - Docker: Opsional untuk deploy MediaMTX.
 
 - **Dependencies**
-  + MediaMTX: Streaming server.
-  + FFmpeg: Pemrosesan video.
-  + Python Packages: `opencv-python`, `ultralytics`, `dlib`, `face_recognition`, `torch`, `torchvision`, `flask`, `flask-login`, `celery`, `redis`, `psycopg2`.
+  + MediaMTX: Streaming server untuk RTSP.
+  + FFmpeg: Pemrosesan video (encoding, decoding).
+  + Python Packages:
+    - `opencv-python`: Untuk computer vision (e.g., frame processing).
+    - `ultralytics`: Untuk YOLOv8 object detection.
+    - `dlib`, `face_recognition`: Untuk face recognition dan face search.
+    - `torch`, `torchvision`: Untuk model AI (YOLOv8, ResNet).
+    - `flask`, `flask-login`: Untuk dashboard web dan autentikasi user.
+    - `celery`: Distributed task queue untuk proses AI di background.
+    - `redis`: Message broker untuk komunikasi antara Flask dan Celery. Redis nyimpen data di RAM untuk kecepatan, tapi pemakaiannya kecil (e.g., <10 MB untuk 1000 tugas).
+    - `psycopg2`: Koneksi ke PostgreSQL (opsional, hanya jika tidak pakai SQLite).
   + Database: SQLite (default) atau PostgreSQL.
 
 - **Rekomendasi**
@@ -205,6 +216,7 @@ AINVR/
    - Pilih jenis AI: Face Recognition, Face Search, Object Detection, Object Classification, People Detection.
    - Untuk Object Detection, pilih sub-kelas: Car, Motorcycle, dll.
    - > Contoh: Aktifkan Face Recognition untuk `Cam1`, pilih Object Detection dengan sub-kelas `Car`.
+   - > Note: Proses AI hanya jalan kalau toggle aktif (real-time) atau ada tugas analisis (offline).
 
 5. **Run AI Analysis (Admin/Operator)**
    - Menu: `AI Analysis`.
@@ -212,6 +224,12 @@ AINVR/
    - Input rentang waktu dan jenis AI (e.g., Face Search, Object Detection).
    - > Contoh: Analisis `Cam1` dari 2025-05-12 10:00:00-11:00:00 untuk deteksi `Car`.
    - > Note: Saat ini hanya mendukung satu kamera. Pengembangan multi-kamera tersedia jika hardware (CPU/GPU/RAM) memadai.
+   - **AI Processing Flow**:
+     + User submit tugas via dashboard (Flask).
+     + Flask kirim tugas ke Redis (antrian).
+     + Celery worker ambil tugas dari Redis, proses AI (YOLOv8, dlib, dll.).
+     + Hasil disimpan ke database (SQLite/PostgreSQL).
+     + Flask ambil hasil dari database, tampilkan ke user.
 
 6. **Manage Recordings (Admin)**
    - Menu: `Settings > Recording`.
@@ -300,6 +318,19 @@ AINVR/
   - Pastikan `DATABASE_URL` di `config.py` sesuai (SQLite atau PostgreSQL).
   - > Untuk PostgreSQL, cek koneksi: `psql -h localhost -U ainvr_user -d ainvr`.
 
+- **Redis High RAM Usage**
+  - Cek pemakaian RAM Redis:
+    ```bash
+    redis-cli info memory
+    ```
+  - Atur batas RAM kalau terlalu tinggi:
+    ```bash
+    echo "maxmemory 50mb" >> redis.conf
+    echo "maxmemory-policy allkeys-lru" >> redis.conf
+    redis-server redis.conf
+    ```
+  - > Pemakaian Redis di AINVR kecil (<10 MB untuk 1000 tugas), tapi monitor rutin.
+
 ## Comparison with Existing NVRs
 
 - **Open-Source NVRs**
@@ -344,6 +375,14 @@ AINVR/
 - **Models**: YOLOv8 di `models/yolo/`, ResNet di `models/resnet/`.
 - **Security**: Gunakan HTTPS dengan Nginx reverse proxy.
 - **Development Status**: Proyek masih dalam pengembangan. Fitur seperti FAISS dan multi-camera analysis direncanakan.
+- **AI Processing Details**:
+  + Proses AI on-demand: Hanya jalan saat real-time toggle aktif atau ada tugas offline.
+  + Real-time: Proses frame berkala (e.g., setiap 1 detik) untuk kamera yang dipilih.
+  + Offline: Proses sekali untuk video yang dipilih, lalu selesai.
+  + Celery worker tetap jalan (nunggu tugas), tapi ga konsumsi resource kalau ga ada tugas.
+- **Redis Details**:
+  + Redis nyimpen antrian tugas di RAM, tapi pemakaiannya kecil di AINVR (<10 MB untuk 1000 tugas).
+  + Bisa dibatasi via `maxmemory` kalau perlu.
 
 ## License
 > TBD (Planned: MIT License)
