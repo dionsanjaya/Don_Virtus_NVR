@@ -4,16 +4,20 @@
 
 ## Overview
 
-- **Purpose**: 
+- **Purpose**:
   - Menyediakan solusi NVR efisien dengan AI object detection.
   - Mendukung monitoring real-time dan analisis video berdasarkan rentang waktu.
   - Menawarkan dashboard untuk administrator dan operator dengan pengaturan fleksibel.
 
 - **Features**:
-  - Data streaming dari kamera IP via MediaMTX.
-  - Object detection real-time dan offline menggunakan YOLOv8.
-  - Dashboard dengan live view, playback, dan analisis AI.
-  - Pengaturan kamera, AI, rekaman, notifikasi, dan manajemen user.
+  + Data streaming dari kamera IP via MediaMTX.
+  + Object detection real-time dan offline menggunakan YOLOv8.
+    - Sub-pilihan: Car detection, Motorcycle detection (dapat ditambah: truck, bicycle, dll.).
+  + Face recognition dan face search menggunakan `dlib`.
+  + Object classification menggunakan ResNet.
+  + People detection (prioritas deteksi "person").
+  + Dashboard dengan live view, playback, dan analisis AI.
+  + Pengaturan kamera, AI, rekaman, notifikasi, dan manajemen user.
 
 ## Project Structure
 ```
@@ -23,14 +27,18 @@ AINVR/
 ├── data/
 │   ├── detections.db          # Database SQLite (opsional PostgreSQL)
 │   ├── recordings/            # Folder untuk video tersimpan
+│   ├── faces/                 # Database wajah untuk face search
 │   ├── logs/                  # File log aplikasi
 │   └── plots/                 # Gambar hasil overlay atau visualisasi
-├── models/                    # Model AI (YOLOv8 weights)
+├── models/
+│   ├── yolo/                 # Model YOLOv8 weights
+│   └── resnet/               # Model ResNet untuk klasifikasi
 ├── scripts/
 │   ├── app.py                # Flask dashboard
 │   ├── tasks.py              # Celery tasks untuk AI processing
 │   ├── init_db.py            # Inisialisasi database
 │   ├── backup.py             # Script backup data
+│   ├── face_utils.py         # Utilitas untuk face recognition/search
 │   ├── utils.py              # Utilitas umum
 │   └── __init__.py
 ├── tests/
@@ -57,7 +65,7 @@ AINVR/
 - **Dependencies**
   + MediaMTX: Streaming server.
   + FFmpeg: Pemrosesan video.
-  + Python Packages: `opencv-python`, `ultralytics`, `flask`, `flask-login`, `celery`, `redis`, `psycopg2`.
+  + Python Packages: `opencv-python`, `ultralytics`, `dlib`, `face_recognition`, `torch`, `torchvision`, `flask`, `flask-login`, `celery`, `redis`, `psycopg2`.
   + Database: SQLite (default) atau PostgreSQL.
 
 - **Rekomendasi**
@@ -78,9 +86,10 @@ AINVR/
    source venv/bin/activate
    pip install -r requirements.txt
    ```
-   + For GPU support (YOLOv8):
+   + For GPU support (YOLOv8, ResNet, dlib):
      ```bash
      pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu118
+     pip install dlib --verbose  # Pastikan CUDA dan cuDNN terinstall
      ```
 
 3. **Configure Settings**
@@ -97,6 +106,7 @@ AINVR/
    SMTP_USER = "your_email@gmail.com"
    SMTP_PASSWORD = "your_app_password"
    SECRET_KEY = "your_secret_key"
+   FACE_DATABASE_PATH = "data/faces/"  # Untuk face recognition/search
    ```
 
 4. **Install MediaMTX**
@@ -130,7 +140,7 @@ AINVR/
    ```bash
    python init_db.py
    ```
-   > Membuat tabel `detections` (untuk hasil AI) dan `users` (untuk multi-user).
+   > Membuat tabel `detections` (untuk hasil AI), `users` (untuk multi-user), dan `faces` (untuk face recognition).
 
 ## Building the Project
 
@@ -188,15 +198,43 @@ AINVR/
    - Pilih layout (e.g., 4x2), assign kamera ke slot, aktifkan overlay AI.
    - > Contoh: Set 4x2, slot 1-4 untuk `Cam1`, aktifkan overlay.
 
-4. **Run AI Analysis (Admin/Operator)**
-   - Menu: `AI Analysis`.
-   - Input rentang waktu (e.g., 2025-05-12 10:00:00 to 11:00:00) dan kamera.
-   - > Contoh: Analisis `Cam1` dari 10:00:00-11:00:00, lihat hasil deteksi.
+4. **Configure AI Settings (Admin)**
+   - Menu: `Settings > AI`.
+   - Pilih jenis AI: Face Recognition, Face Search, Object Detection, Object Classification, People Detection.
+   - Untuk Object Detection, pilih sub-kelas: Car, Motorcycle, dll.
+   - > Contoh: Aktifkan Face Recognition untuk `Cam1`, pilih Object Detection dengan sub-kelas `Car`.
 
-5. **Manage Recordings (Admin)**
+5. **Run AI Analysis (Admin/Operator)**
+   - Menu: `AI Analysis`.
+   - Input rentang waktu, kamera, dan jenis AI (e.g., Face Search, Object Detection).
+   - > Contoh: Cari wajah tertentu di `Cam1` dari 10:00:00-11:00:00, atau deteksi `Car` di periode yang sama.
+
+6. **Manage Recordings (Admin)**
    - Menu: `Settings > Recording`.
    - Aktifkan rekaman, set durasi (e.g., 3600 detik), retensi (e.g., 30 hari).
    - > Contoh: Rekam `Cam1` dengan durasi 1 jam, retensi 30 hari.
+
+7. **Face Recognition/Search Example Output**
+   ```
+   === Face Recognition Result ===
+   +----+-------------------+-----------------+
+   | No | Timestamp         | Match           |
+   +----+-------------------+-----------------+
+   | 1  | 2025-05-12 10:05  | Person ID: 001  |
+   | 2  | 2025-05-12 10:10  | Unknown         |
+   +----+-------------------+-----------------+
+   ```
+
+8. **Object Detection Example Output**
+   ```
+   === Object Detection Result ===
+   +----+-------------------+-----------------+
+   | No | Timestamp         | Object          |
+   +----+-------------------+-----------------+
+   | 1  | 2025-05-12 10:05  | Car (0.92)      |
+   | 2  | 2025-05-12 10:06  | Motorcycle (0.87)|
+   +----+-------------------+-----------------+
+   ```
 
 ## Maintenance
 
@@ -242,13 +280,17 @@ AINVR/
   - Gunakan GPU dengan `pip install torch --extra-index-url https://download.pytorch.org/whl/cu118`.
   - > Verifikasi GPU: `python -c "import torch; print(torch.cuda.is_available())"`.
 
+- **Face Recognition Not Detecting**
+  - Pastikan `dlib` dan `face_recognition` terinstall.
+  - > Periksa log: `data/logs/app.log` untuk error `dlib`.
+
+- **Object Detection Missing Classes**
+  - Pastikan sub-kelas (e.g., Car, Motorcycle) dipilih di `Settings > AI`.
+  - > Update YOLOv8 weights di `models/yolo/` jika kelas tidak mendukung.
+
 - **Database Error**
   - Pastikan `DATABASE_URL` di `config.py` sesuai (SQLite atau PostgreSQL).
   - > Untuk PostgreSQL, cek koneksi: `psql -h localhost -U ainvr_user -d ainvr`.
-
-- **No Video in Recordings**
-  - Verifikasi `recordPath` di `mediamtx.yml` dan izin folder `recordings`.
-  - > Set ulang izin: `chmod -R 755 recordings`.
 
 ## Contributing
 
@@ -271,7 +313,7 @@ AINVR/
 
 - **Logs**: Disimpan di `data/logs/` dengan rotasi harian.
 - **Recordings**: Disimpan di `./recordings/camX/`.
-- **Models**: Disimpan di `models/` (YOLOv8 weights).
+- **Models**: YOLOv8 di `models/yolo/`, ResNet di `models/resnet/`.
 - **Security**: Gunakan HTTPS dengan Nginx reverse proxy.
 
 ## License
