@@ -13,7 +13,8 @@
   + Data streaming dari kamera IP via MediaMTX.
   + Object detection real-time dan offline menggunakan YOLOv8.
     - Sub-pilihan: Car detection, Motorcycle detection (dapat ditambah: truck, bicycle, dll.).
-  + Face recognition dan face search menggunakan `dlib`.
+  + Face recognition menggunakan `dlib` (face detection, landmark detection, embedding).
+  + Face search menggunakan `dlib` (linear search) dan rencana integrasi FAISS untuk kecepatan lebih tinggi.
   + Object classification menggunakan ResNet.
   + People detection (prioritas deteksi "person").
   + Dashboard dengan jumlah thumbnail kamera yang dapat dipilih dan analisis AI.
@@ -383,6 +384,9 @@ AINVR/
 - **Redis Details**:
   + Redis nyimpen antrian tugas di RAM, tapi pemakaiannya kecil di AINVR (<10 MB untuk 1000 tugas).
   + Bisa dibatasi via `maxmemory` kalau perlu.
+- **dlib and FAISS Details**:
+  + dlib: Untuk face detection, landmark detection, dan ekstraksi embedding wajah (128 dimensi).
+  + FAISS: Untuk face search cepat di database besar, menggunakan indeks vektor (e.g., IVF, HNSW). Direkomendasikan untuk AINVR.
 
 ## License
 > TBD (Planned: MIT License)
